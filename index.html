@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PvZ: Fusion Save Level Editor</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --accent-green: #2ea043;
+            --accent-hover: #3fb950;
+            --accent-blue: #58a6ff;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --danger: #f85149;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 2rem 1rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 820px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        header {
+            text-align: center;
+        }
+
+        header h1 {
+            color: #fff;
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 6px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--accent-green);
+            background: rgba(46, 160, 67, 0.05);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #21262d;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        .badge.active {
+            color: var(--accent-green);
+            border-color: var(--accent-green);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        label {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        select, input[type="number"] {
+            background: #0d1117;
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 0.6rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        button {
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: #21262d;
+            color: #fff;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.15s ease;
+        }
+
+        button:hover:not(:disabled) {
+            background: #30363d;
+        }
+
+        button.primary {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+        }
+
+        button.primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats-box {
+            background: #0d1117;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1rem;
+            font-size: 0.88rem;
+            line-height: 1.5;
+        }
+
+        .stats-box strong {
+            color: var(--accent-blue);
+        }
+
+        .alert {
+            padding: 0.8rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            color: var(--accent-blue);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Plants vs. Zombies: Fusion Save Editor</h1>
+        <p>Safely edit your Adventure Level and unlock plants without corrupting challenge arrays.</p>
+    </header>
+
+    <!-- Upload Card -->
+    <div class="card">
+        <div class="drop-zone" id="dropZone">
+            <p><strong>Click to browse</strong> or drag & drop <code>playerData.json</code> here</p>
+            <input type="file" id="fileInput" accept=".json">
+            <div class="badge" id="fileStatus">No file loaded</div>
+        </div>
+        <button id="loadDefaultBtn" style="align-self: flex-start;">Load Blank / Default File</button>
+    </div>
+
+    <!-- Edit Settings -->
+    <div class="card" id="editorCard" style="display: none;">
+        <h3>Adventure Progression</h3>
+        
+        <div class="controls-grid">
+            <div class="form-group">
+                <label for="worldPreset">Jump to Chapter (9 levels per world):</label>
+                <select id="worldPreset">
+                    <option value="" disabled selected>Select a chapter preset...</option>
+                    <option value="1">Day 1-1 (Level 1 — Game Start)</option>
+                    <option value="10">Night 2-1 (Level 10 — Beat Day)</option>
+                    <option value="19">Pool 3-1 (Level 19 — Beat 18 levels)</option>
+                    <option value="28">Fog 4-1 (Level 28 — Beat Pool)</option>
+                    <option value="37">Roof 5-1 (Level 37 — Beat Fog)</option>
+                    <option value="46">Adventure Cleared (Level 46)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="advLevelInput">Current Adventure Level (1 - 46+):</label>
+                <input type="number" id="advLevelInput" min="1" max="127" value="1">
+            </div>
+
+            <div class="form-group">
+                <label for="coinsInput">Coins / Money:</label>
+                <input type="number" id="coinsInput" min="0" value="0">
+            </div>
+        </div>
+
+        <div class="alert">
+            ℹ️ In <i>PvZ: Fusion</i>, all Day & Night plants (plus Shovel, Glove, and Fertilizer) unlock automatically when your level reaches <strong>19 (Pool 3-1)</strong>.
+        </div>
+
+        <div class="stats-box" id="statsBox">
+            Status: Ready
+        </div>
+
+        <h3>Actions & Export</h3>
+        <div class="btn-group">
+            <button class="primary" id="downloadBtn">Download playerData.json</button>
+            <button id="copyBtn">Copy JSON to Clipboard</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // In-memory JSON object
+    let saveData = null;
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileStatus = document.getElementById('fileStatus');
+    const editorCard = document.getElementById('editorCard');
+    const advLevelInput = document.getElementById('advLevelInput');
+    const worldPreset = document.getElementById('worldPreset');
+    const coinsInput = document.getElementById('coinsInput');
+    const statsBox = document.getElementById('statsBox');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const loadDefaultBtn = document.getElementById('loadDefaultBtn');
+
+    // Drag and Drop
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                saveData = JSON.parse(e.target.result);
+                fileStatus.textContent = `Loaded: ${file.name}`;
+                fileStatus.classList.add('active');
+                initEditor();
+            } catch (err) {
+                alert("Invalid JSON file! Please upload a valid playerData.json.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    loadDefaultBtn.addEventListener('click', () => {
+        saveData = {
+            "advLevel": 1,
+            "advZhouMu": 1,
+            "newAdvArrivedLevel": 1,
+            "advanture2Level": 0,
+            "playerShootingArrivedLevel": 1,
+            "towerLevel": 1,
+            "theMoneyCount": 0,
+            "advLevelCompleted": new Array(128).fill(false),
+            "clgLevelCompleted": new Array(256).fill(false),
+            "IZLevelCompleted": new Array(128).fill(false),
+            "survivalLevelCompleted": new Array(128).fill(false),
+            "advantureData": {
+                "levelCompletedHard": [],
+                "levelCompleted": [],
+                "missionDatas": [],
+                "talents": [],
+                "hardMode": false,
+                "gameDifficulty": 0,
+                "plantDevelopData": { "plants": [] },
+                "enpowerStarCount": 0,
+                "enpowerStarCount_hard": 0
+            },
+            "config": {}
+        };
+        fileStatus.textContent = "Loaded template file";
+        fileStatus.classList.add('active');
+        initEditor();
+    });
+
+    function initEditor() {
+        editorCard.style.display = 'flex';
+        advLevelInput.value = saveData.advLevel || 1;
+        coinsInput.value = saveData.theMoneyCount || 0;
+        updatePreview();
+    }
+
+    worldPreset.addEventListener('change', () => {
+        const val = parseInt(worldPreset.value, 10);
+        if (!isNaN(val)) {
+            advLevelInput.value = val;
+            applyChanges();
+        }
+    });
+
+    advLevelInput.addEventListener('input', applyChanges);
+    coinsInput.addEventListener('input', applyChanges);
+
+    function applyChanges() {
+        if (!saveData) return;
+
+        let targetLvl = parseInt(advLevelInput.value, 10);
+        if (isNaN(targetLvl) || targetLvl < 1) targetLvl = 1;
+
+        // Set base level fields
+        saveData.advLevel = targetLvl;
+        saveData.newAdvArrivedLevel = targetLvl;
+        saveData.theMoneyCount = parseInt(coinsInput.value, 10) || 0;
+
+        // Completed level count
+        const beatenCount = Math.max(0, targetLvl - 1);
+
+        // Ensure advLevelCompleted array is initialized
+        if (!Array.isArray(saveData.advLevelCompleted) || saveData.advLevelCompleted.length < 128) {
+            saveData.advLevelCompleted = new Array(128).fill(false);
+        }
+
+        // 1-based indexing for advLevelCompleted (index 0 is false)
+        saveData.advLevelCompleted[0] = false;
+        for (let i = 1; i < saveData.advLevelCompleted.length; i++) {
+            saveData.advLevelCompleted[i] = (i <= beatenCount);
+        }
+
+        // Support recent v2.x / v3.x updates (advantureData)
+        if (!saveData.advantureData) {
+            saveData.advantureData = {};
+        }
+        
+        // Update levelCompleted integer array
+        const completedList = [];
+        for (let i = 1; i <= beatenCount; i++) {
+            completedList.push(i);
+        }
+        saveData.advantureData.levelCompleted = completedList;
+        saveData.advantureData.enpowerStarCount = beatenCount;
+
+        updatePreview();
+    }
+
+    function formatWorld(lvl) {
+        if (lvl <= 0) return "1-1";
+        const w = Math.floor((lvl - 1) / 9) + 1;
+        const sub = ((lvl - 1) % 9) + 1;
+        return `${w}-${sub} (Level ${lvl})`;
+    }
+
+    function updatePreview() {
+        const lvl = saveData.advLevel;
+        const beaten = Math.max(0, lvl - 1);
+        statsBox.innerHTML = `
+            <strong>Current Stage:</strong> World ${formatWorld(lvl)}<br>
+            <strong>Completed Levels:</strong> ${beaten} levels beaten<br>
+            <strong>Empowerment Stars:</strong> ${saveData.advantureData ? saveData.advantureData.enpowerStarCount : beaten} stars<br>
+            <strong>Challenge Slots Preserved:</strong> ${saveData.clgLevelCompleted ? saveData.clgLevelCompleted.length : 0} entries
+        `;
+    }
+
+    downloadBtn.addEventListener('click', () => {
+        if (!saveData) return;
+        applyChanges();
+        const jsonStr = JSON.stringify(saveData, null, 4);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'playerData.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    copyBtn.addEventListener('click', () => {
+        if (!saveData) return;
+        applyChanges();
+        const jsonStr = JSON.stringify(saveData, null, 4);
+        navigator.clipboard.writeText(jsonStr).then(() => {
+            alert("Save JSON copied to clipboard!");
+        });
+    });
+</script>
+
+</body>
+</html>
